@@ -1,0 +1,107 @@
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Sku Rendering Performance Tests</title>
+  <style>
+    label,
+    button {
+      display: block;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <label for="urls">Up to <b>20</b> urls. Each url in new line.</label>
+  <textarea name="urls" id="urls" cols="90" rows="20"></textarea>
+  <button id="btn-tests">Run Tests</button>
+  <script>
+    const KEY = 'AIzaSyDXkYoR1U3ih-czoZoru2WMpCaO1mAl90U';
+    const STRATEGY = 'mobile'; // mobile || desktop
+
+    // Helpers
+
+    const getUrls = () => document.querySelector('#urls').value.split('\n');
+
+    const testUrl = (url, strategy, key) => (
+      `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${url}&strategy=${strategy}&key=${key}`
+    );
+
+    // CSV Related
+
+    const exportCSV = (responses) => {
+      const csvContent = createCsvContent(responses);
+      downloadCsv(csvContent);
+    }
+
+    const createCsvContent = (responses) => {
+      const keys = Object.keys(responses[0]);
+      const values = responses.map(el => Object.values(el).join(',')).join('\n');
+      const csvContent = keys + '\n' + values;
+
+      return csvContent;
+    }
+
+    const downloadCsv = (csvContent, filename = 'lighthouse-results.csv') => {
+      const a = document.createElement('a');
+      const mimeType = 'application/octet-stream';
+
+      a.href = URL.createObjectURL(new Blob([csvContent], { type: mimeType }));
+      a.setAttribute('download', filename);
+
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      console.log(`Downloading ${filename}`);
+    }
+
+    // Response related
+
+    const parseResponse = (response) => ({
+      'url': decodeURI(response.lighthouseResult.requestedUrl),
+      'score': Math.round(response.lighthouseResult.categories.performance.score * 100),
+      'strategy': STRATEGY,
+      'Dom-Size': response.lighthouseResult.audits['dom-size'].numericValue,
+      'First-Contentful-Paint' : parseFloat(response.lighthouseResult.audits['first-contentful-paint'].displayValue.replace('s','')),
+      'First-Meaningful-Paint': parseFloat(response.lighthouseResult.audits['first-meaningful-paint'].displayValue.replace('s','')),
+      'Speed-Index': parseFloat(response.lighthouseResult.audits['speed-index'].displayValue.replace('s','')),
+      'First-CPU-Idle': parseFloat(response.lighthouseResult.audits['first-cpu-idle'].displayValue.replace('s', '')),
+      'Time-to-Interactive': parseFloat(response.lighthouseResult.audits['interactive'].displayValue.replace('s', '')),
+      'Estimated-Input-Latency': parseFloat(response.lighthouseResult.audits['estimated-input-latency'].displayValue.replace('s', '')),
+    });
+
+    const runTests = async () => {
+      let responses = [];
+      let asyncResponses = [];
+
+      const urls = getUrls();
+      console.log(`Running ${urls.length} tests`);
+
+      urls.map((url, i) => {
+        const requestUrl = testUrl(url, STRATEGY, KEY);
+        const fetchParams = { mode: 'cors',
+                              headers: { 'Content-Type': 'application/json; charset=utf-8' }}
+
+        const res = fetch(requestUrl, fetchParams)
+          .then(response => response.status === 200 && response.json())
+          .then(response => {
+            console.log(`Test ${i} done`);
+            responses.push(parseResponse(response));
+          })
+          .catch(err => console.error(err));
+
+        asyncResponses.push(res);
+      })
+
+      Promise.all(asyncResponses).then(data => {
+        console.log(`Finished ${data.length} tests`);
+        exportCSV(responses);
+      })
+    }
+
+    // Init
+
+    document.querySelector('#btn-tests').addEventListener('click', runTests);
+
+  </script>
+</body>
+</html>
