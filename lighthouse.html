@@ -66,7 +66,7 @@
       'Speed-Index': parseFloat(response.lighthouseResult.audits['speed-index'].displayValue.replace('s','')),
       'First-CPU-Idle': parseFloat(response.lighthouseResult.audits['first-cpu-idle'].displayValue.replace('s', '')),
       'Time-to-Interactive': parseFloat(response.lighthouseResult.audits['interactive'].displayValue.replace('s', '')),
-      'Estimated-Input-Latency': parseFloat(response.lighthouseResult.audits['estimated-input-latency'].displayValue.replace('s', '')),
+      'Max-Potential-FID': parseInt(response.lighthouseResult.audits['max-potential-fid'].displayValue.split('ms')[0].replace(',', '')),
     });
 
     const runTests = async () => {
